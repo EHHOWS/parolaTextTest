@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+    <meta charset="UTF-8">
+    <head>
+        <title>Parola</title>
+        <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📰</text></svg>">
+    </head>
+    <style>
+        @font-face {
+            font-family: 'MaruBuri';
+            src: url(https://hangeul.pstatic.net/hangeul_static/webfont/MaruBuri/MaruBuri-Regular.woff) format("woff");
+        }
+        .drag-prevent{
+            -ms-user-select: none;
+            -moz-user-select: -moz-none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            user-select: none;
+        }
+        body {
+            background-color: rgb(23, 23, 23);
+            
+            display: flex;
+            flex-direction: column;
+
+            text-align: center;
+            color: white;
+        }
+        button {
+            background-color: inherit;
+            color: white;
+
+            border: none;
+            outline: none;
+
+            font-size: 1.5rem;
+            width: 2.2rem;
+            height: 2.2rem;
+            
+            margin-top: 3.5vh;
+            margin-bottom: 3.5vh;
+        }
+        button:hover {
+            cursor: pointer;
+        }
+        .container {
+            background-color: inherit;
+
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+        }
+        .note {
+            display: flex;
+            background-color: rgb(23, 23, 23);
+        }
+        #textInput {
+            background-color: inherit;
+            color: rgb(239, 239, 239);
+
+            border: none;
+            outline: none;
+
+            box-sizing: border-box;
+
+            resize: none;
+
+            font-family: "MaruBuri", serif;
+            font-size: 1.4rem;
+            letter-spacing: 0.1rem;
+
+            overflow: hidden;
+            text-align: justify;
+            white-space: pre-wrap;
+            word-break: break-all;
+            hyphens: auto;
+            
+            margin: 0 auto;
+            margin-top: 3vh;
+            padding: 2rem;
+            height: auto;
+            width: 32vw;
+        }
+        #textInput:focus,
+        #textInput:hover,
+        #textInput:active {
+            background: transparent;
+            box-shadow: none;
+            border: none;
+            outline: none;
+        }
+        .border {
+            width: 100%;
+            height: 0.1rem;
+            background-color: darkslategray;
+        }
+        #saved {
+            display: block;
+
+            color: rgb(23, 23, 23);
+
+            position: fixed;
+            top: 20px;  /* 상단에서 20px 떨어진 위치 */
+            right: 20px; /* 우측에서 20px 떨어진 위치 */
+        }
+    </style>
+    <body>
+        <div class="drag-prevent" id="saved">SAVED</div>
+        <div class="container">
+            <button class="drag-prevent" onclick="addFontSize(0.1)">+</button>
+            <button class="drag-prevent" onclick="addFontSize(-0.1)">-</button>
+            <button class="drag-prevent" onclick="saveText()">💾</button>
+            <button class="drag-prevent" onclick="loadText()">📂</button>
+        </div>
+        <div class="border"></div>
+        <div class="note">
+            <textarea id="textInput"></textarea>
+        </div>
+
+        <script>
+            let textInput = document.getElementById('textInput');
+            var fontSize = 1.4;
+
+            function animateColor() {
+                const element = document.getElementById('saved');
+                let colors = [
+                    [23, 23, 23], // 시작 색상
+                    [150, 150, 150], // 중간 색상
+                    [23, 23, 23]     // 끝 색상
+                ];
+                let steps = 150; // 전체 애니메이션 단계 수
+                let currentStep = 0;
+
+                function easeInOutQuad(t) {
+                    return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+                }
+
+                function interpolateColor(start, end, step, totalSteps) {
+                    let t = step / totalSteps;
+                    let easedT = easeInOutQuad(t);
+                    return start.map((color, index) => {
+                    return Math.round(color + (end[index] - color) * easedT);
+                    });
+                }
+
+                function animate() {
+                    if (currentStep <= steps) {
+                    let colorIndex = Math.floor(currentStep / (steps / (colors.length - 1)));
+                    let stepInSection = currentStep % (steps / (colors.length - 1));
+                    let sectionSteps = steps / (colors.length - 1);
+
+                    let color = interpolateColor(
+                        colors[colorIndex],
+                        colors[colorIndex + 1],
+                        stepInSection,
+                        sectionSteps
+                    );
+
+                    element.style.color = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
+                    currentStep++;
+                    requestAnimationFrame(animate);
+                    }
+                }
+
+                animate();
+                }
+
+            function saveText() {
+                const text = textInput.value;
+                localStorage.setItem('savedText', text);
+                localStorage.setItem('fontSize', fontSize);
+                
+                animateColor();
+            }
+
+            function loadText() {
+                const savedText = localStorage.getItem('savedText');
+                if (savedText) {
+                    document.getElementById('textInput').value = savedText;
+                } else {
+                }
+            }
+
+            function clearText() {
+                localStorage.removeItem('savedText');
+                document.getElementById('textInput').value = '';
+                alert('Saved text cleared!');
+            }
+        
+            function addFontSize(amount) {
+                fontSize = parseFloat( parseFloat((fontSize + amount)).toFixed(1) );
+                textInput.style.fontSize = fontSize + "rem";
+                adjustTextareaHeight();
+            }
+
+            function adjustTextareaHeight() {
+                textInput.style.height = (textInput.scrollHeight) + 'px';
+            }
+
+            textInput.addEventListener('input', adjustTextareaHeight);
+
+            window.addEventListener("load", () => {
+                loadText();
+                fontSize = localStorage.getItem('fontSize') || 1.4;
+                textInput.style.fontSize = localStorage.getItem('fontSize') + 'rem';
+                adjustTextareaHeight();
+            });
+
+            document.addEventListener("keydown", function(e) {
+                if (e.ctrlKey && e.key === 's') {
+                    e.preventDefault(); // 브라우저 기본 동작 방지
+                    saveText(); // 사용자 정의 저장 함수 호출
+                }
+            });
+            document.addEventListener('wheel', function(event) {
+                if (event.ctrlKey) {
+                    // 기본 동작 방지 (브라우저 확대/축소 방지)
+                    event.preventDefault();
+                    
+                    // 휠 방향 확인
+                    if (event.deltaY < 0) {
+                    // 휠 위로 (확대)
+                    addFontSize(0.1);
+                    } else {
+                    // 휠 아래로 (축소)
+                    addFontSize(-0.1);
+                    }
+                }
+            }, { passive: false });
+        </script>
+    </body>
+</html>
