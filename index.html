@@ -1,5 +1,6 @@
 <!DOCTYPE html>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width", initial-scale=1 />
     <head>
         <title>Parola</title>
         <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📰</text></svg>">
@@ -43,11 +44,12 @@
             cursor: pointer;
         }
         .container {
-            background-color: inherit;
-
-            display: flex;
-            flex-direction: row;
-            justify-content: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background-color: rgb(23, 23, 23);
+            padding: 0.5vh 0;
+            width: 100%;
         }
         .note {
             display: flex;
@@ -78,7 +80,7 @@
             margin-top: 3vh;
             padding: 2rem;
             height: auto;
-            width: 32vw;
+            width: 35vw;
         }
         #textInput:focus,
         #textInput:hover,
@@ -95,6 +97,7 @@
         }
         #saved {
             display: block;
+            z-index: 1000;
 
             color: rgb(23, 23, 23);
 
@@ -102,22 +105,55 @@
             top: 20px;  /* 상단에서 20px 떨어진 위치 */
             right: 20px; /* 우측에서 20px 떨어진 위치 */
         }
+        #count {
+            display: block;
+            z-index: 1000;
+
+            color: rgb(239, 239, 239);
+            text-align: right;
+
+            position: fixed;
+            bottom: 3vh;
+            right: 2.2vw;
+
+            width: 8vh;
+        }
+
+        @media (max-width: 767px) {
+            #textInput {
+                width: 82vh !important;
+            }
+            button {
+                font-size: 1.2rem;
+                width: 1.2rem;
+                height: 1.2rem;
+                
+                margin-top: 1.5vh;
+                margin-bottom: 3.2vh;
+            }
+        }
     </style>
     <body>
         <div class="drag-prevent" id="saved">SAVED</div>
         <div class="container">
-            <button class="drag-prevent" onclick="addFontSize(0.1)">+</button>
-            <button class="drag-prevent" onclick="addFontSize(-0.1)">-</button>
-            <button class="drag-prevent" onclick="saveText()">💾</button>
-            <button class="drag-prevent" onclick="loadText()">📂</button>
+            <div class="drag-prevent">
+                <button onclick="smoothScroll('top')">⬆️</button>
+                <button onclick="addFontSize(0.1)">➕</button>
+                <button onclick="addFontSize(-0.1)">➖</button>
+                <button onclick="saveText()">💾</button>
+                <button onclick="loadText()">📂</button>
+                <button onclick="smoothScroll('bottom')">⬇️</button>
+            </div>
+            <div class="border"></div>
         </div>
-        <div class="border"></div>
         <div class="note">
             <textarea id="textInput"></textarea>
         </div>
+        <div id="count">0ch</div>
 
         <script>
             let textInput = document.getElementById('textInput');
+            let textLength = document.getElementById('count');
             var fontSize = 1.4;
 
             function animateColor() {
@@ -127,7 +163,7 @@
                     [150, 150, 150], // 중간 색상
                     [23, 23, 23]     // 끝 색상
                 ];
-                let steps = 150; // 전체 애니메이션 단계 수
+                let steps = 90; // 전체 애니메이션 단계 수
                 let currentStep = 0;
 
                 function easeInOutQuad(t) {
@@ -138,31 +174,57 @@
                     let t = step / totalSteps;
                     let easedT = easeInOutQuad(t);
                     return start.map((color, index) => {
-                    return Math.round(color + (end[index] - color) * easedT);
+                        return Math.round(color + (end[index] - color) * easedT);
                     });
                 }
 
                 function animate() {
                     if (currentStep <= steps) {
-                    let colorIndex = Math.floor(currentStep / (steps / (colors.length - 1)));
-                    let stepInSection = currentStep % (steps / (colors.length - 1));
-                    let sectionSteps = steps / (colors.length - 1);
+                        let colorIndex = Math.floor(currentStep / (steps / (colors.length - 1)));
+                        let stepInSection = currentStep % (steps / (colors.length - 1));
+                        let sectionSteps = steps / (colors.length - 1);
+                        console.log(colorIndex)
 
-                    let color = interpolateColor(
-                        colors[colorIndex],
-                        colors[colorIndex + 1],
-                        stepInSection,
-                        sectionSteps
-                    );
+                        let color = interpolateColor(
+                            colors[colorIndex],
+                            colors[colorIndex + 1],
+                            stepInSection,
+                            sectionSteps
+                        );
 
-                    element.style.color = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
-                    currentStep++;
-                    requestAnimationFrame(animate);
+                        element.style.color = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
+                        currentStep++;
+                        requestAnimationFrame(animate);
                     }
                 }
 
                 animate();
+            }
+
+            function smoothScroll(direction) {
+                const currentPosition = window.pageYOffset;
+                const targetPosition = (direction === 'top') ? 0 : document.documentElement.scrollHeight - window.innerHeight + 1;
+                const distance = Math.abs(targetPosition - currentPosition);
+                const duration = 400; // 스크롤 지속 시간 (밀리초)
+                let start = null;
+
+                function animation(currentTime) {
+                    if (start === null) start = currentTime;
+                    const timeElapsed = currentTime - start;
+                    const run = ease(timeElapsed, currentPosition, targetPosition - currentPosition, duration);
+                    window.scrollTo(0, run);
+                    if (timeElapsed < duration) requestAnimationFrame(animation);
                 }
+
+                function ease(t, b, c, d) {
+                    t /= d / 2;
+                    if (t < 1) return c / 2 * t * t + b;
+                    t--;
+                    return -c / 2 * (t * (t - 2) - 1) + b;
+                }
+
+                requestAnimationFrame(animation);
+            }
 
             function saveText() {
                 const text = textInput.value;
@@ -196,12 +258,16 @@
                 textInput.style.height = (textInput.scrollHeight) + 'px';
             }
 
-            textInput.addEventListener('input', adjustTextareaHeight);
+            textInput.addEventListener('input', () => {
+                adjustTextareaHeight()
+                textLength.innerHTML = textInput.value.length + 'ch';
+            });
 
             window.addEventListener("load", () => {
                 loadText();
                 fontSize = localStorage.getItem('fontSize') || 1.4;
                 textInput.style.fontSize = localStorage.getItem('fontSize') + 'rem';
+                textLength.innerHTML = textInput.value.length + 'ch';
                 adjustTextareaHeight();
             });
 
