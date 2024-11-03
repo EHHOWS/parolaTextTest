@@ -44,6 +44,8 @@
             cursor: pointer;
         }
         .container {
+            display: flex;
+            flex-direction: column;
             position: sticky;
             top: 0;
             z-index: 100;
@@ -124,20 +126,32 @@
                 width: 82vh !important;
             }
             button {
+                flex: 1;
+
                 font-size: 1.2rem;
                 width: 1.2rem;
                 height: 1.2rem;
                 
                 margin-top: 1.5vh;
                 margin-bottom: 3.2vh;
+            } 
+            .container {
+                justify-content: space-between;
+            }
+            .container > div {
+                display: flex;
+                justify-content: space-between;
+                width: 100%; /* 전체 너비 사용 */
             }
         }
     </style>
     <body>
         <div class="drag-prevent" id="saved">SAVED</div>
-        <div class="container">
-            <div class="drag-prevent">
+        <div class="container" class="drag-prevent">
+            <div>
                 <button onclick="smoothScroll('top')">⬆️</button>
+                <button onclick="playWhiteNoise()">🔊</button>
+                <button onclick="stopWhiteNoise()">🔇</button>
                 <button onclick="addFontSize(0.1)">➕</button>
                 <button onclick="addFontSize(-0.1)">➖</button>
                 <button onclick="saveText()">💾</button>
@@ -292,6 +306,130 @@
                     }
                 }
             }, { passive: false });
+            setInterval(() => {
+                console.log("hi");
+            }, 1000)
+        </script>
+        <script>
+            let audioContext;
+            let bufferSource;
+            let gainNode;
+            let filterNode;
+            let convolverNode;
+
+            function initAudio() {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                gainNode = audioContext.createGain();
+                filterNode = audioContext.createBiquadFilter();
+                convolverNode = audioContext.createConvolver();
+
+                // 저역 통과 필터 설정
+                filterNode.type = "lowpass";
+                filterNode.frequency.value = 2000; // 주파수 상향 조정
+
+                // 고역 통과 필터 추가
+                const highpassFilter = audioContext.createBiquadFilter();
+                highpassFilter.type = "highpass";
+                highpassFilter.frequency.value = 100;
+
+                // 리버브 효과 생성
+                createReverb().then(reverbBuffer => {
+                    convolverNode.buffer = reverbBuffer;
+                });
+
+                // 노드 연결
+                filterNode.connect(highpassFilter);
+                highpassFilter.connect(convolverNode);
+                convolverNode.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+            }
+
+            function createWhiteNoiseBuffer() {
+                const bufferSize = 2 * audioContext.sampleRate;
+                const noiseBuffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+                const output = noiseBuffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    output[i] = Math.random() * 2 - 1;
+                }
+                return noiseBuffer;
+            }
+
+            function createPinkNoise() {
+                const bufferSize = 2 * audioContext.sampleRate;
+                const noiseBuffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+                const output = noiseBuffer.getChannelData(0);
+                let b0, b1, b2, b3, b4, b5, b6;
+                b0 = b1 = b2 = b3 = b4 = b5 = b6 = 0.0;
+                for (let i = 0; i < bufferSize; i++) {
+                    const white = Math.random() * 2 - 1;
+                    b0 = 0.99886 * b0 + white * 0.0555179;
+                    b1 = 0.99332 * b1 + white * 0.0750759;
+                    b2 = 0.96900 * b2 + white * 0.1538520;
+                    b3 = 0.86650 * b3 + white * 0.3104856;
+                    b4 = 0.55000 * b4 + white * 0.5329522;
+                    b5 = -0.7616 * b5 - white * 0.0168980;
+                    output[i] = b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362;
+                    output[i] *= 0.11; // 음량 조정
+                    b6 = white * 0.115926;
+                }
+                return noiseBuffer;
+            }
+
+            function createReverb() {
+                const duration = 3;
+                const decay = 2;
+                const sampleRate = audioContext.sampleRate;
+                const length = sampleRate * duration;
+                const impulse = audioContext.createBuffer(2, length, sampleRate);
+                const leftChannel = impulse.getChannelData(0);
+                const rightChannel = impulse.getChannelData(1);
+
+                for (let i = 0; i < length; i++) {
+                    const n = i / length;
+                    const t = i / sampleRate;
+                    leftChannel[i] = (Math.random() * 2 - 1) * Math.pow(1 - n, decay);
+                    rightChannel[i] = (Math.random() * 2 - 1) * Math.pow(1 - n, decay);
+                }
+
+                return Promise.resolve(impulse);
+            }
+
+            function playWhiteNoise() {
+                if (!audioContext) {
+                    initAudio();
+                }
+
+                if (bufferSource) {
+                    bufferSource.stop();
+                }
+
+                bufferSource = audioContext.createBufferSource();
+                bufferSource.buffer = createPinkNoise(); // 핑크 노이즈 사용
+                bufferSource.loop = true;
+                bufferSource.connect(filterNode);
+
+                // 페이드 인 효과
+                gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+                gainNode.gain.linearRampToValueAtTime(0.7, audioContext.currentTime + 2);
+
+                bufferSource.start();
+            }
+
+            function stopWhiteNoise() {
+                if (bufferSource) {
+                    // 페이드 아웃 효과
+                    gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 2);
+                    setTimeout(() => {
+                        bufferSource.stop();
+                    }, 2000);
+                }
+            }
+
+            function setVolume(volume) {
+                if (gainNode) {
+                    gainNode.gain.setValueAtTime(volume, audioContext.currentTime);
+                }
+            }
         </script>
     </body>
 </html>
