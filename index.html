@@ -70,7 +70,12 @@
 
             font-family: "MaruBuri", serif;
             font-size: 1.4rem;
-            letter-spacing: 0.1rem;
+            letter-spacing: 0.08rem;
+            line-height: 2.12rem;
+            
+            -moz-tab-size: 3;
+            -o-tab-size: 3;
+            tab-size: 3;
 
             overflow: hidden;
             text-align: justify;
@@ -197,11 +202,10 @@
                         let colorIndex = Math.floor(currentStep / (steps / (colors.length - 1)));
                         let stepInSection = currentStep % (steps / (colors.length - 1));
                         let sectionSteps = steps / (colors.length - 1);
-                        console.log(colorIndex)
 
                         let color = interpolateColor(
                             colors[colorIndex],
-                            colors[colorIndex + 1],
+                            colors[(colorIndex === 2) ? colorIndex : colorIndex + 1], // 에러나는거 수정
                             stepInSection,
                             sectionSteps
                         );
@@ -285,6 +289,12 @@
                 adjustTextareaHeight();
             });
 
+            textInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Tab') {
+                    e.preventDefault();
+                    document.execCommand('insertText', false, '\t');
+                }
+            });
             document.addEventListener("keydown", function(e) {
                 if (e.ctrlKey && e.key === 's') {
                     e.preventDefault(); // 브라우저 기본 동작 방지
@@ -307,8 +317,8 @@
                 }
             }, { passive: false });
             setInterval(() => {
-                console.log("hi");
-            }, 1000)
+                saveText()
+            }, 15000)
         </script>
         <script>
             let audioContext;
