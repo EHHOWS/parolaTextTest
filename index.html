@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+    <!DOCTYPE html>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width", initial-scale=1 />
     <head>
@@ -316,9 +316,133 @@
                     }
                 }
             }, { passive: false });
+
+                document.addEventListener('DOMContentLoaded', function() {
+                    let lastInputWasEllipsis  = false;
+                    let multi = false;
+                    let selectionStart = 0;
+                    let selectionEnd = 0;
+                    let lastChar = '';
+
+                    let targetKeys = ['-', '.', '"', '\'', '[', '(', '{', '*'];
+                    let targets = ['--', '...', '"', '\'', '[', '(', '{', '*'];
+                    let destinations = ['—', '…', '“”', '‘’', '[]', '()', '{}', '**'];
+                    let surrounds = [false, false, true, true, true, true, true, true];
+                
+                    textInput.addEventListener('input', function(e) {
+                        const cursorPosition = this.selectionStart;
+                        const currentValue = this.value;
+                        for (let i = 0; i < targets.length; i += 1) {
+                            let target = targets[i];
+                            let destination = destinations[i];
+                            let surround = surrounds[i];
+
+                            if (targetKeys.indexOf(lastChar) === -1) {
+                                lastInputWasEllipsis  = false;
+                                return;
+                            }
+                            if (multi) {
+                                if (surround) {
+                                    document.execCommand('undo', false, null);
+                                    destination = destinations[targetKeys.indexOf(lastChar)]
+                                    
+                                    this.setSelectionRange(selectionStart, selectionStart);
+                                    document.execCommand('insertText', true, destination.slice(0, Math.floor(destination.length / 2)));
+                                    this.setSelectionRange(selectionEnd + 1, selectionEnd + 1);
+                                    document.execCommand('insertText', true, destination.slice(Math.floor(destination.length / 2)));
+                                    this.setSelectionRange(selectionStart + 1, selectionEnd + 1);
+                                    return;
+                                } else {
+                                    continue;
+                                }
+                            }
+                            if (currentValue.slice(cursorPosition - target.length, cursorPosition) === target) {
+                                if (target == "'" && (currentValue.slice(cursorPosition - target.length - 1, cursorPosition - 1) != " ")
+                                                    && currentValue.slice(cursorPosition - target.length - 1, cursorPosition - 1) !=  ""
+                                                    && currentValue.slice(cursorPosition - target.length - 1, cursorPosition - 1) !=  "\n"
+                                                    && currentValue.slice(cursorPosition - target.length - 1, cursorPosition - 1) !=  "\r"
+                                                    && currentValue.slice(cursorPosition - target.length - 1, cursorPosition - 1) !=  "\t"
+                                                    && currentValue.slice(cursorPosition - target.length - 1, cursorPosition - 1) !=  undefined
+                                                    && currentValue.slice(cursorPosition - target.length - 1, cursorPosition - 1) !=  null) {
+                                    return;
+                                } else {
+                                    for (let j = 0; j < target.length; j += 1) { document.execCommand('delete'); }
+                                    document.execCommand('insertText', true, destination);
+                                }
+                                
+                                // const newValue = currentValue.slice(0, cursorPosition - target.length) + destination + currentValue.slice(cursorPosition);
+                                // this.value = newValue;
+                                if (surround) {
+                                    this.setSelectionRange(cursorPosition - (1 - Math.floor(destination.length / 2)), cursorPosition - (1 - Math.floor(destination.length / 2)));
+                                } else {
+                                    this.setSelectionRange(cursorPosition - (target.length - destination.length), cursorPosition - (target.length - destination.length));
+                                }
+                                lastInputWasEllipsis  = true;
+                                break;
+                            } else {
+                                lastInputWasEllipsis  = false;
+                            }
+                        }
+                    });
+                    textInput.addEventListener('keydown', function(e) {
+                        lastChar = e.key;
+                        if (!(this.selectionStart === this.selectionEnd)) {
+                            selectionStart = this.selectionStart;
+                            selectionEnd = this.selectionEnd;
+                            multi = true;
+                        } else {
+                            multi = false;
+                        }
+                        // console.log(lastChar, lastInputWasEllipsis);
+                    });
+            
+                    textInput.addEventListener('keydown', function(e) {
+                        if (e.key === 'Backspace' && lastInputWasEllipsis) {
+                            if (!(this.selectionStart === this.selectionEnd)) {
+                                lastInputWasEllipsis  = false;
+                                return;
+                            }
+
+                            e.preventDefault();
+                            const cursorPosition = this.selectionStart;
+                            const currentValue = this.value;
+                            let newValue = currentValue;
+
+                            
+                            
+                            let newCursorPosition;
+                            for (let i = 0; i < targets.length; i += 1) {
+                                let target = targets[i];
+                                let destination = destinations[i];
+                                let surround = surrounds[i];
+
+                                if (surround === true) {
+                                    if (currentValue.slice(cursorPosition - Math.floor(destination.length / 2), cursorPosition + Math.floor(destination.length / 2)) === destination) {
+                                        if (target === '"' || target === '\'') {
+                                            newValue = currentValue.slice(0, cursorPosition - Math.floor(destination.length / 2)) + target + target + currentValue.slice(cursorPosition + Math.floor(destination.length / 2));
+                                    } else {
+                                            newValue = currentValue.slice(0, cursorPosition - Math.floor(destination.length / 2)) + currentValue.slice(cursorPosition + Math.floor(destination.length / 2));
+                                    }
+                                    newCursorPosition = cursorPosition
+                                    }
+                            } else {
+                                if (currentValue[cursorPosition - destination.length] === destination) {
+                                        newValue = currentValue.slice(0, cursorPosition - 1) + target + currentValue.slice(cursorPosition);
+                                        newCursorPosition = cursorPosition + target.length - destination.length;
+                                }
+                            }
+                            this.value = newValue;
+                            this.setSelectionRange(newCursorPosition, newCursorPosition);
+                            lastInputWasEllipsis  = false;
+                            }
+                        }
+                    });
+                });
+
             setInterval(() => {
                 saveText()
-            }, 15000)
+            }, 15000);
+        
         </script>
         <script>
             let audioContext;
@@ -442,4 +566,4 @@
             }
         </script>
     </body>
-</html>
+    </html>
